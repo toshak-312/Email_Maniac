@@ -97,19 +97,21 @@
         "Test_01": {
             "cv_file_path": "",
             "cv_file_name": "CV _ TOSHAK BHATNAGAR.pdf",
-            "email_column": "Email",
+            "email_column": "Not Mapped",
             "column_mappings": {
-                "FIRST_NAME": "First Name",
-                "LAST_NAME": "Sirname",
-                "COMPANY_NAME": "First Name",
-                "ROLE": ""
+                "FIRST_NAME": "Not Mapped",
+                "LAST_NAME": "Not Mapped",
+                "COMPANY_NAME": "Not Mapped",
+                "ROLE": "Not Mapped"
             },
             "email_subject": "Internship Application: {{ROLE}} at {{COMPANY_NAME}}",
             "email_body": "<html>\n  <body style=\"font-family: Arial, sans-serif; font-size: 15px; color: #333;\">\n    <p>Dear <strong>{{FIRST_NAME}}</strong>,</p>\n\n    <p>\n      I hope you\u2019re doing well. I\u2019m reaching out to express my interest in an \n      <strong>internship opportunity at {{COMPANY_NAME}}</strong>.\n    </p>\n\n    <p>\n      With a strong focus on <strong>finance, business, and strategic operations</strong>, \n      I aim to contribute by bringing:\n    </p>\n\n    <ul>\n      <li><strong>Research-driven insights</strong> and analytical thinking</li>\n      <li><strong>Structured execution</strong> and process support</li>\n      <li>An <strong>adaptable, ownership-led mindset</strong> to fast-paced teams like yours</li>\n    </ul>\n\n    <p>\n      I\u2019ve attached my <strong>CV for your reference</strong> and would genuinely appreciate \n      the opportunity to connect and contribute.\n    </p>\n\n    <br>\n\n    <hr style=\"border: none; border-top: 1px solid #ccc; margin-top: 30px;\">\n\n    <!-- Signature Block -->\n    <table style=\"font-family: Arial, sans-serif; font-size: 14px; color: #333; margin-top: 10px;\">\n      <tr>\n        <td>\n          <strong style=\"font-size: 16px;\">Toshak Bhatnagar</strong><br>\n          Finance & Strategy | University of Delhi (SBSEC)<br>\n          \ud83d\udcde +91-8854051928<br>\n          \ud83d\udce9 <a href=\"mailto:toshak.bhat.work@gmail.com\">toshak.bhat.work@gmail.com</a><br>\n          \ud83c\udf10 <a href=\"https://www.linkedin.com/in/toshakbhatnagar\" target=\"_blank\">LinkedIn Profile</a>\n        </td>\n        <td style=\"padding-left: 20px;\">\n          <img src=\"https://i.imgur.com/qj6zH6M.png\" alt=\"Profile\" width=\"90\" style=\"border-radius: 50%;\">\n        </td>\n      </tr>\n    </table>\n  </body>\n</html>",
             "smtp_email": "toshak.bhat.work@gmail.com",
             "smtp_password": "vmso wdnn gqcn koax",
             "enable_cc": true,
-            "cc_email": "2023.2261@sbse.du.ac.in"
+            "cc_email": "2023.2261@sbse.du.ac.in",
+            "schedule_date": "",
+            "schedule_time": ""
         }
     }
 }

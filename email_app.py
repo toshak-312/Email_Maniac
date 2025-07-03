@@ -7,38 +7,54 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import re
+import json
 
 # =================================================================================
-# 1. App Title
+# 1. App Title & Configuration
 # =================================================================================
 st.set_page_config(page_title="Toshak's Bulk Deployer", layout="wide")
 st.title("Toshak's Bulk Deployer for Outreach 🚀")
 
 # =================================================================================
-# Helper Functions
+# 2. State Management & Persistence
+# =================================================================================
+# Using st.session_state to persist settings and profiles.
+# This dictionary will hold all our profiles.
+if 'profiles' not in st.session_state:
+    st.session_state.profiles = {"Default": {
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 465,
+        "smtp_user": "",
+        "smtp_pass": "",
+        "signature": "Best regards,<br><b>Your Name</b>",
+        "cc_enabled": False,
+        "cc_email": ""
+    }}
+
+if 'selected_profile' not in st.session_state:
+    st.session_state.selected_profile = "Default"
+
+# =================================================================================
+# 3. Helper Functions
 # =================================================================================
 
-def send_email(smtp_server, smtp_port, smtp_user, smtp_pass, from_addr, to_addr, subject, body, signature, attachment_bytes=None, attachment_name=None):
+def send_email(smtp_server, smtp_port, smtp_user, smtp_pass, from_addr, to_addr, subject, body, signature, cc_addr=None, attachment_bytes=None, attachment_name=None):
     """
     Connects to the SMTP server and sends a single email.
+    Now includes CC functionality.
     """
     try:
-        # Create the email message
         msg = MIMEMultipart()
         msg['From'] = from_addr
         msg['To'] = to_addr
         msg['Subject'] = subject
+        # NEW: Add CC if provided
+        if cc_addr:
+            msg['Cc'] = cc_addr
 
-        # =========================================================================
-        # 4. HTML Email Support & 5. Signature Support
-        # =========================================================================
-        # Combine body and signature, both supporting HTML
         full_body = body + "<br><br>" + signature
         msg.attach(MIMEText(full_body, 'html'))
 
-        # =========================================================================
-        # 3. Custom Attachment Support
-        # =========================================================================
         if attachment_bytes and attachment_name:
             part = MIMEBase('application', 'octet-stream')
             part.set_payload(attachment_bytes)
@@ -46,9 +62,9 @@ def send_email(smtp_server, smtp_port, smtp_user, smtp_pass, from_addr, to_addr,
             part.add_header('Content-Disposition', f"attachment; filename= {attachment_name}")
             msg.attach(part)
 
-        # Send the email
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
             server.login(smtp_user, smtp_pass)
+            # The send_message method correctly handles the To and Cc fields
             server.send_message(msg)
         return True, None
     except Exception as e:
@@ -57,6 +73,7 @@ def send_email(smtp_server, smtp_port, smtp_user, smtp_pass, from_addr, to_addr,
 def render_template(template, data_row, neutral_tokens, column_mappings):
     """
     Replaces neutral tokens in a template string with data from a CSV row.
+    (This function remains unchanged as requested).
     """
     rendered = template
     for token in neutral_tokens:
@@ -64,32 +81,86 @@ def render_template(template, data_row, neutral_tokens, column_mappings):
         if mapped_column and mapped_column in data_row and pd.notna(data_row[mapped_column]):
             rendered = rendered.replace(f"{{{{{token}}}}}", str(data_row[mapped_column]))
         else:
-            # If a token is not mapped or the data is missing, remove it
             rendered = rendered.replace(f"{{{{{token}}}}}", "")
     return rendered
 
-# =================================================================================
-# 2. Neutral Terminology for Variable Fields
-# =================================================================================
+# Neutral tokens remain the same
 NEUTRAL_TOKENS = ["A_01", "A_02", "A_03", "A_04", "A_05"]
 
 # =================================================================================
-# Sidebar for Configuration
+# 4. Sidebar for Configuration
 # =================================================================================
 with st.sidebar:
     st.header("⚙️ Configuration")
 
-    st.subheader("SMTP Credentials")
-    smtp_server = st.text_input("SMTP Server", "smtp.gmail.com")
-    smtp_port = st.number_input("SMTP Port", value=465)
-    smtp_user = st.text_input("Your Email Address")
-    smtp_pass = st.text_input("Your App Password", type="password")
+    # NEW: Profile Management Section
+    st.subheader("👤 Profiles")
+    profile_names = list(st.session_state.profiles.keys())
+    
+    # Select box to load a profile
+    selected_profile_name = st.selectbox(
+        "Load, Create, or Manage Profiles",
+        options=profile_names,
+        key='selected_profile'
+    )
+    
+    # Load the selected profile's data
+    profile_data = st.session_state.profiles[selected_profile_name]
 
-    st.subheader("Defaults")
-    # =========================================================================
-    # 3. Custom Attachment Support
-    # =========================================================================
+    # Input for new profile name
+    new_profile_name = st.text_input("New Profile Name").strip()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 Save Profile"):
+            save_name = new_profile_name if new_profile_name else selected_profile_name
+            if not save_name:
+                st.warning("Please enter a name for the new profile.")
+            else:
+                st.session_state.profiles[save_name] = {
+                    "smtp_server": st.session_state.smtp_server_input,
+                    "smtp_port": st.session_state.smtp_port_input,
+                    "smtp_user": st.session_state.smtp_user_input,
+                    "smtp_pass": st.session_state.smtp_pass_input,
+                    "signature": st.session_state.signature_input,
+                    "cc_enabled": st.session_state.cc_enabled_input,
+                    "cc_email": st.session_state.cc_email_input
+                }
+                st.session_state.selected_profile = save_name
+                st.success(f"Profile '{save_name}' saved!")
+                # Force a rerun to update the selectbox
+                st.rerun()
+
+    with col2:
+        if st.button("🗑️ Delete Profile"):
+            if selected_profile_name == "Default":
+                st.error("The 'Default' profile cannot be deleted.")
+            elif selected_profile_name in st.session_state.profiles:
+                del st.session_state.profiles[selected_profile_name]
+                st.session_state.selected_profile = "Default"
+                st.success(f"Profile '{selected_profile_name}' deleted.")
+                st.rerun()
+
     st.markdown("---")
+
+    # Configuration fields are now populated from the selected profile
+    st.subheader("SMTP Credentials")
+    smtp_server = st.text_input("SMTP Server", value=profile_data['smtp_server'], key='smtp_server_input')
+    smtp_port = st.number_input("SMTP Port", value=profile_data['smtp_port'], key='smtp_port_input')
+    smtp_user = st.text_input("Your Email Address", value=profile_data['smtp_user'], key='smtp_user_input')
+    smtp_pass = st.text_input("Your App Password", type="password", value=profile_data['smtp_pass'], key='smtp_pass_input')
+
+    # NEW: CC Option
+    st.markdown("---")
+    st.subheader("CC Settings")
+    cc_enabled = st.checkbox("Enable CC on all emails", value=profile_data.get('cc_enabled', False), key='cc_enabled_input')
+    cc_email = ""
+    if cc_enabled:
+        cc_email = st.text_input("CC Email Address", value=profile_data.get('cc_email', ''), key='cc_email_input')
+
+    # Attachment uploader
+    st.markdown("---")
+    st.subheader("Attachments")
     uploaded_attachment = st.file_uploader("Attach a file to all emails")
     attachment_bytes = None
     attachment_name = None
@@ -98,41 +169,58 @@ with st.sidebar:
         attachment_name = uploaded_attachment.name
         st.success(f"Attachment '{attachment_name}' ready!")
 
-    # =========================================================================
-    # 5. Signature Support
-    # =========================================================================
+    # Signature editor
     st.markdown("---")
     st.subheader("Signature")
-    signature = st.text_area("Paste your HTML signature here", height=200)
+    signature = st.text_area("Paste your HTML signature here", height=200, value=profile_data['signature'], key='signature_input')
     if signature:
         st.write("Signature Preview:")
         st.markdown(signature, unsafe_allow_html=True)
+    
+    # NEW: Test Email Button
+    st.markdown("---")
+    if st.button("📧 Send Test Email"):
+        if not all([smtp_server, smtp_port, smtp_user, smtp_pass]):
+            st.error("SMTP credentials are required.")
+        else:
+            st.info(f"Sending a test email to {smtp_user}...")
+            test_subject = "Test Email from Toshak's Bulk Deployer"
+            test_body = "This is a test email to verify your configuration.<br>Your signature and formatting should appear correctly below."
+            
+            # Use the current CC settings for the test
+            test_cc = cc_email if cc_enabled else None
+            
+            success, error_msg = send_email(
+                smtp_server, smtp_port, smtp_user, smtp_pass,
+                smtp_user, smtp_user, test_subject, test_body, signature,
+                cc_addr=test_cc,
+                attachment_bytes=attachment_bytes, attachment_name=attachment_name
+            )
+            if success:
+                st.success("Test email sent successfully!")
+            else:
+                st.error(f"Failed to send test email: {error_msg}")
 
 
 # =================================================================================
-# Main App Body - Using Tabs for different modes
+# 5. Main App Body - Using Tabs
 # =================================================================================
 
 tab1, tab2 = st.tabs(["📤 Bulk Send (from CSV)", "✉️ Manual Send"])
 
-# =================================================================================
-# TAB 1: Bulk Send from CSV
-# =================================================================================
 with tab1:
     st.header("1. Compose Your Email")
     
     col1, col2 = st.columns(2)
     with col1:
-        email_subject_template = st.text_input("Email Subject Template")
+        email_subject_template = st.text_input("Email Subject Template", key="bulk_subject")
 
     with col2:
-        # A little trick to show placeholder text
         st.write("Available Tokens:")
         st.code(f"{{{{{', '.join(NEUTRAL_TOKENS)}}}}}", language="text")
 
-    email_body_template = st.text_area("Email Body Template", height=300)
+    email_body_template = st.text_area("Email Body Template", height=300, key="bulk_body")
     st.info("💡 HTML supported: use <b>bold</b>, <br> for line breaks, <a href='...'>links</a>, etc.")
-
 
     st.header("2. Upload & Map Your Data")
     uploaded_csv = st.file_uploader("Upload your recipient list (CSV)", type="csv")
@@ -149,14 +237,12 @@ with tab1:
 
             cols = st.columns(len(NEUTRAL_TOKENS) + 1)
             
-            # Mapping for Email
             with cols[0]:
                 email_column = st.selectbox("Email Column", options=df.columns, index=None, placeholder="Select Email Column")
             
-            # Mapping for Neutral Tokens
             for i, token in enumerate(NEUTRAL_TOKENS):
                 with cols[i+1]:
-                    column_mappings[token] = st.selectbox(f"{{{{{token}}}}}", options=df.columns, index=None, placeholder=f"Map {token}")
+                    column_mappings[token] = st.selectbox(f"{{{{{token}}}}}", options=df.columns, index=None, placeholder=f"Map {token}", key=f"map_{token}")
 
         except Exception as e:
             st.error(f"Failed to read CSV: {e}")
@@ -175,23 +261,23 @@ with tab1:
             progress_bar = st.progress(0)
             log_messages = []
             
+            # Determine CC address from sidebar state
+            final_cc_addr = cc_email if cc_enabled else None
+
             for i, row in df.iterrows():
-                recipient_email = row[email_column]
-                
-                # Simple regex for email validation
-                if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
-                    log_messages.append(f"Skipped: Invalid email format - {recipient_email}")
+                recipient_email = row.get(email_column)
+                if not recipient_email or not re.match(r"[^@]+@[^@]+\.[^@]+", str(recipient_email)):
+                    log_messages.append(f"Skipped: Invalid or missing email in row {i+1}")
                     continue
                     
-                # Render subject and body
                 subject = render_template(email_subject_template, row, NEUTRAL_TOKENS, column_mappings)
                 body = render_template(email_body_template, row, NEUTRAL_TOKENS, column_mappings)
 
-                # Send email
                 success, error_msg = send_email(
                     smtp_server, smtp_port, smtp_user, smtp_pass, 
-                    smtp_user, recipient_email, subject, body, signature, 
-                    attachment_bytes, attachment_name
+                    smtp_user, recipient_email, subject, body, signature,
+                    cc_addr=final_cc_addr,
+                    attachment_bytes=attachment_bytes, attachment_name=attachment_name
                 )
                 
                 if success:
@@ -199,27 +285,23 @@ with tab1:
                 else:
                     log_messages.append(f"❌ Failed for: {recipient_email} | Error: {error_msg}")
                 
-                # Update progress bar
                 progress_bar.progress((i + 1) / total_emails)
-                time.sleep(0.1) # Small delay to prevent overwhelming the server
+                time.sleep(0.1)
 
             st.success("Bulk deployment finished!")
             
-            # Display logs
             with st.expander("View Send Log"):
                 for msg in log_messages:
-                    if "✅" in msg:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
+                    st.markdown(msg.replace("✅", "✅ ").replace("❌", "❌ "), unsafe_allow_html=True)
 
 
-# =================================================================================
-# TAB 2: Manual Send
-# =================================================================================
 with tab2:
     st.header("Send a Single, Ad-hoc Email")
-    st.info("This section allows you to send a single email without needing a CSV file. It uses the same templates, signature, and attachment from the other tabs and sidebar.")
+    st.info("This section uses the templates below and the configuration from the sidebar.")
+
+    # Re-using the templates from the bulk tab
+    email_subject_manual = st.text_input("Email Subject", key="manual_subject")
+    email_body_manual = st.text_area("Email Body", height=250, key="manual_body")
 
     recipient_email_manual = st.text_input("Recipient Email Address")
     
@@ -228,7 +310,7 @@ with tab2:
     cols_manual = st.columns(len(NEUTRAL_TOKENS))
     for i, token in enumerate(NEUTRAL_TOKENS):
         with cols_manual[i]:
-            manual_token_values[token] = st.text_input(f"Value for {{{{{token}}}}}", key=f"manual_{token}")
+            manual_token_values[f"{{{{{token}}}}}"] = st.text_input(f"Value for {{{{{token}}}}}", key=f"manual_{token}")
 
     if st.button("🚀 Send Manual Email"):
         if not all([smtp_server, smtp_port, smtp_user, smtp_pass]):
@@ -236,25 +318,24 @@ with tab2:
         elif not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email_manual):
             st.error("Please enter a valid recipient email address.")
         else:
-            # Create a mock data row from manual inputs
-            mock_row = {f"{{{token}}}": val for token, val in manual_token_values.items()}
-            
-            # This is a simplified render for manual mode
             def render_manual(template, values):
                 rendered = template
                 for token, value in values.items():
-                    rendered = rendered.replace(f"{{{{{token}}}}}", value)
+                    rendered = rendered.replace(token, value)
                 return rendered
 
-            subject = render_manual(st.session_state.get('email_subject_template', ''), manual_token_values)
-            body = render_manual(st.session_state.get('email_body_template', ''), manual_token_values)
+            subject = render_manual(email_subject_manual, manual_token_values)
+            body = render_manual(email_body_manual, manual_token_values)
+            
+            final_cc_addr = cc_email if cc_enabled else None
             
             st.info(f"Sending to {recipient_email_manual}...")
             
             success, error_msg = send_email(
                 smtp_server, smtp_port, smtp_user, smtp_pass,
                 smtp_user, recipient_email_manual, subject, body, signature,
-                attachment_bytes, attachment_name
+                cc_addr=final_cc_addr,
+                attachment_bytes=attachment_bytes, attachment_name=attachment_name
             )
 
             if success:
