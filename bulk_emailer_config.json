@@ -1,0 +1,15 @@
+{
+    "csv_file_path": "/Users/toshak./Downloads/yooo - Sheet1 (3).csv",
+    "cv_file_path": "/Users/toshak./Desktop/CV_SENT/CV _ TOSHAK BHATNAGAR.pdf",
+    "email_column": "Select Email Column",
+    "column_mappings": {
+        "FIRST_NAME": "name",
+        "LAST_NAME": "Not Mapped",
+        "COMPANY_NAME": "company name",
+        "ROLE": "Not Mapped"
+    },
+    "email_subject": "Seeking Internship Opportunity \u2013 Ready to Add Value!",
+    "email_body": "Hi {{FIRST_NAME}}, \ud83d\udc4b\ud83c\udffb\n\nI hope you\u2019re doing well. My name is Toshak Bhatnagar, and I\u2019m reaching out to express my interest in an internship opportunity at {{COMPANY_NAME}}.\n\nWith a strong focus on business, finance, and strategic operations, I aim to contribute by bringing:\n\u2022 Research-driven insights and analytical thinking.\n\u2022 Structured support and process improvement for ongoing tasks.\n\u2022 A fresh, adaptable mindset to fast-paced teams like yours.\n\nI\u2019ve attached my CV for your reference and would genuinely appreciate the opportunity to connect and contribute.\n\nBest regards,\nToshak Bhatnagar\n+91-8854051928\ntoshak.bhat.work@gmail.com",
+    "smtp_email": "toshak.bhat.work@gmail.com",
+    "smtp_password": "vmso wdnn gqcn koax"
+}
