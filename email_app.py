@@ -432,7 +432,7 @@ def configure_ai_assistant():
         with st.spinner("Thinking..."):
             try:
                 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                model = genai.GenerativeModel("gemini-1.5-pro")
+                model = genai.GenerativeModel("gemini-1.5-flash")
 
                 context = (
                     "You are a helpful AI assistant built into a Streamlit app that helps users "
