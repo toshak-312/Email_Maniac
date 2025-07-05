@@ -8,6 +8,8 @@ from email.mime.base import MIMEBase
 from email import encoders
 import re
 import json
+import google.generativeai as genai
+import os
 
 # =================================================================================
 # 1. App Title & Configuration
@@ -222,6 +224,9 @@ with st.sidebar:
             else:
                 st.error(f"Failed to send test email: {error_msg}")
 
+    # --- AI ASSISTANT ADDITION ---
+    st.markdown("---")
+    # This function is defined at the end of the script
     configure_ai_assistant()
 
 
@@ -385,25 +390,10 @@ with tab2:
             else:
                 st.error(f"❌ Failed to send email. Error: {error_msg}")
 
+
 # =================================================================================
 # 6. AI ASSISTANT ADDON (Self-Contained Section)
-#
-# Instructions:
-# 1. Make sure you have the google-generativeai library installed:
-#    pip install google-generativeai
-#
-# 2. Add your Gemini API Key to your Streamlit secrets.
-#    Create a file .streamlit/secrets.toml and add the following line:
-#    GEMINI_API_KEY = "YOUR_API_KEY_HERE"
-#
-# 3. Paste this entire code block at the end of your existing Streamlit script.
-#    To place it in the sidebar, paste it inside your `with st.sidebar:` block.
 # =================================================================================
-
-import streamlit as st
-import google.generativeai as genai
-import os
-
 def configure_ai_assistant():
     """
     Sets up the AI Assistant section in the Streamlit sidebar.
@@ -509,17 +499,3 @@ def configure_ai_assistant():
                         error_message = f"An error occurred while contacting the AI. Please try again. \n\n**Error:** {e}"
                         st.error(error_message)
                         st.session_state.ai_messages.append({"role": "assistant", "content": error_message})
-
-# =================================================================================
-# FINAL STEP: Add the line below to your existing `with st.sidebar:` block
-# =================================================================================
-
-# Example of where to place the call in your email_app.py:
-#
-# with st.sidebar:
-#     st.header("⚙️ Configuration")
-#     # ... (all your existing sidebar code for profiles, SMTP, etc.) ...
-#     st.markdown("---")
-#     configure_ai_assistant() # <--- PASTE THIS LINE HERE
-
-
