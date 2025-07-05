@@ -8,8 +8,35 @@ from email.mime.base import MIMEBase
 from email import encoders
 import re
 import json
+
 import google.generativeai as genai
-import os
+
+def configure_ai_assistant():
+    st.markdown("### 💬 Ask the AI Assistant")
+    st.caption("Ask about how to use this app — features, errors, or workflow issues.")
+
+    question = st.text_input("Ask your question:")
+
+    if question:
+        with st.spinner("Thinking..."):
+            try:
+                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                model = genai.GenerativeModel("gemini-1.5-pro")
+
+                context = (
+                    "You are a helpful AI assistant built into a Streamlit app that helps users "
+                    "understand how to use its features like SMTP configuration, bulk email sending, "
+                    "attachments, CC settings, etc. Be clear and helpful.\n\n"
+                    f"User asked: {question}"
+                )
+
+                response = model.generate_content(context)
+                st.success(response.text)
+
+            except Exception as e:
+                st.error(f"Something went wrong: {e}")
+
+
 
 # =================================================================================
 # 1. App Title & Configuration
@@ -224,12 +251,10 @@ with st.sidebar:
             else:
                 st.error(f"Failed to send test email: {error_msg}")
 
-    # --- AI ASSISTANT ADDITION ---
-    st.markdown("---")
-    # This function is defined at the end of the script
+            st.info("About to load AI Assistant")  # Debug line
+            configure_ai_assistant()
+
     configure_ai_assistant()
-
-
 # =================================================================================
 # 5. Main App Body - Using Tabs
 # =================================================================================
@@ -390,112 +415,34 @@ with tab2:
             else:
                 st.error(f"❌ Failed to send email. Error: {error_msg}")
 
+# ================================================
+# 💬 Gemini-Powered AI Assistant (Modular Add-on)
+# ================================================
 
-# =================================================================================
-# 6. AI ASSISTANT ADDON (Self-Contained Section)
-# =================================================================================
+import streamlit as st
+import google.generativeai as genai
+
 def configure_ai_assistant():
-    """
-    Sets up the AI Assistant section in the Streamlit sidebar.
-    This function is designed to be a standalone, drop-in component.
-    """
+    st.markdown("### 💬 Ask the AI Assistant")
+    st.caption("Ask about how to use this app — features, errors, or workflow issues.")
 
-    # --- 1. Static Context about the Streamlit App ---
-    # This context provides the AI with knowledge about your app's functionality.
-    # It's crucial for generating relevant and accurate answers.
-    APP_CONTEXT = """
-    You are a helpful AI assistant embedded in a Streamlit application called "Toshak's Bulk Deployer for Outreach".
-    Your goal is to help users understand and troubleshoot the app's features.
+    question = st.text_input("Ask your question:")
 
-    Here is a summary of how the app works:
+    if question:
+        with st.spinner("Thinking..."):
+            try:
+                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                model = genai.GenerativeModel("gemini-1.5-pro")
 
-    --- App Functionality ---
+                context = (
+                    "You are a helpful AI assistant built into a Streamlit app that helps users "
+                    "understand how to use its features like SMTP configuration, bulk email sending, "
+                    "attachments, CC settings, etc. Be clear and direct.\n\n"
+                    f"User asked: {question}"
+                )
 
-    1.  **Core Purpose**: The app sends personalized bulk emails using a CSV file and also supports sending single, manual emails.
+                response = model.generate_content(context)
+                st.success(response.text)
 
-    2.  **Two Main Tabs**:
-        - **Bulk Send (from CSV)**: The primary feature. Users upload a CSV file with recipient data.
-        - **Manual Send**: For sending a single, ad-hoc email.
-
-    3.  **Dynamic Personalization (Tokens)**:
-        - The app uses neutral placeholder tokens in the email subject and body: `{{A_01}}`, `{{A_02}}`, `{{A_03}}`, `{{A_04}}`, `{{A_05}}`.
-        - In the "Bulk Send" tab, users must map columns from their uploaded CSV to these tokens. For example, they can map the 'Name' column from their CSV to the `{{A_01}}` token.
-        - The app automatically replaces the tokens with the corresponding data from each row in the CSV for each email.
-
-    4.  **Configuration (in the Sidebar)**:
-        - **SMTP Credentials**: Users must provide their SMTP Server, Email Address, and an "App Password" (not their regular email password). The SMTP port is fixed to 465 (SSL).
-        - **Profiles**: Users can save and load different configurations (credentials, signature, etc.) as profiles. There is a "Default" profile that cannot be deleted.
-        - **CC Settings**: Users can enable a global CC address for all outgoing emails.
-        - **Attachments**: A single file can be uploaded and attached to all outgoing emails.
-        - **Signature**: Users can add an HTML signature, which is appended to every email.
-        - **Test Email**: A button is available to send a test email to the user's own address to verify settings.
-
-    5.  **Common User Questions & Issues**:
-        - **"Why is my email not sending?"**: Usually due to incorrect SMTP credentials. The user must use an "App Password" from their email provider (like Google), not their main account password.
-        - **"How do I use the tokens?"**: Explain that they should write `{{A_01}}` in the subject/body and then map the `A_01` token to a column in their uploaded CSV.
-        - **"Why is the attachment not working?"**: The user needs to upload the file in the sidebar *before* clicking the send button.
-        - **"What is an App Password?"**: It's a special 16-digit password generated by email providers like Google or Outlook that gives an app permission to access your account. It's more secure than using your main password.
-        - **"CSV Upload Error"**: The file must be a valid CSV format.
-    """
-
-    # --- 2. Function to Get API Key ---
-    def get_api_key():
-        """
-        Fetches the Gemini API key from Streamlit secrets or environment variables.
-        """
-        # First, try to get the key from Streamlit's secrets management
-        if hasattr(st, 'secrets') and "GEMINI_API_KEY" in st.secrets:
-            return st.secrets["GEMINI_API_KEY"]
-        # If not found, fall back to environment variables (for local development)
-        return os.getenv("GEMINI_API_KEY")
-
-    # --- 3. AI Assistant UI in an Expander ---
-    with st.expander("🤖 AI Assistant", expanded=False):
-        
-        gemini_api_key = get_api_key()
-
-        if not gemini_api_key:
-            st.warning("Gemini API key not found. Please add it to your Streamlit secrets or environment variables to enable the AI Assistant.", icon="⚠️")
-            st.code("GEMINI_API_KEY = 'YOUR_API_KEY_HERE'", language="toml")
-            return # Stop execution if no API key
-
-        # Configure the Generative AI model
-        try:
-            genai.configure(api_key=gemini_api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-        except Exception as e:
-            st.error(f"Failed to configure Gemini AI. Please check your API key. Error: {e}")
-            return
-
-        # Initialize chat history in session state
-        if "ai_messages" not in st.session_state:
-            st.session_state.ai_messages = []
-
-        # Display previous messages
-        for msg in st.session_state.ai_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        # Chat input for user's question
-        if user_question := st.chat_input("How do I use this app?"):
-            # Add user message to chat history
-            st.session_state.ai_messages.append({"role": "user", "content": user_question})
-            with st.chat_message("user"):
-                st.markdown(user_question)
-
-            # Construct the full prompt with context
-            full_prompt = f"{APP_CONTEXT}\n\n--- User Question ---\n{user_question}"
-
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    try:
-                        response = model.generate_content(full_prompt)
-                        ai_response = response.text
-                        st.markdown(ai_response)
-                        # Add AI response to chat history
-                        st.session_state.ai_messages.append({"role": "assistant", "content": ai_response})
-                    except Exception as e:
-                        error_message = f"An error occurred while contacting the AI. Please try again. \n\n**Error:** {e}"
-                        st.error(error_message)
-                        st.session_state.ai_messages.append({"role": "assistant", "content": error_message})
+            except Exception as e:
+                st.error(f"Something went wrong: {e}")
